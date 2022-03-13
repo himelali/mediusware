@@ -8,14 +8,21 @@
 
 
     <div class="card">
-        <form action="" method="get" class="card-header">
+        <form method="get" class="card-header">
             <div class="form-row justify-content-between">
                 <div class="col-md-2">
-                    <input type="text" name="title" placeholder="Product Title" class="form-control">
+                    <input type="text" name="title" placeholder="Product Title" value="{{ request('title') }}" class="form-control">
                 </div>
                 <div class="col-md-2">
-                    <select name="variant" id="" class="form-control">
-
+                    <select name="variant" class="form-control">
+                        <option value="">All</option>
+                        @foreach($variants as $key => $items)
+                            <optgroup label="{{ $key }}">
+                            @foreach($items as $item)
+                                <option @if(request('variant') == $item->name) selected @endif value="{{ $item->name }}">{{ $item->name }}</option>
+                            @endforeach
+                            </optgroup>
+                        @endforeach
                     </select>
                 </div>
 
@@ -24,12 +31,12 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text">Price Range</span>
                         </div>
-                        <input type="text" name="price_from" aria-label="First name" placeholder="From" class="form-control">
-                        <input type="text" name="price_to" aria-label="Last name" placeholder="To" class="form-control">
+                        <input type="text" name="price_from" value="{{ request('price_from') }}" aria-label="First name" placeholder="From" class="form-control">
+                        <input type="text" name="price_to" value="{{ request('price_to') }}" aria-label="Last name" placeholder="To" class="form-control">
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <input type="date" name="date" placeholder="Date" class="form-control">
+                    <input type="date" value="{{ request('date') }}" name="date" placeholder="Date" class="form-control">
                 </div>
                 <div class="col-md-1">
                     <button type="submit" class="btn btn-primary float-right"><i class="fa fa-search"></i></button>
@@ -45,31 +52,48 @@
                         <th>#</th>
                         <th>Title</th>
                         <th>Description</th>
-                        <th>Variant</th>
-                        <th width="150px">Action</th>
+                        <th style="width: 500px">Variant</th>
+                        <th style="width: 150px">Action</th>
                     </tr>
                     </thead>
-
+                    @if($products->count()>0)
                     <tbody>
-
+                    @foreach($products as $i => $product)
                     <tr>
-                        <td>1</td>
-                        <td>T-Shirt <br> Created at : 25-Aug-2020</td>
-                        <td>Quality product in low cost</td>
+                        <td>{{ $products->perPage() * ($products->currentPage() - 1) + (++$i) }}</td>
                         <td>
-                            <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant">
-
-                                <dt class="col-sm-3 pb-0">
-                                    SM/ Red/ V-Nick
-                                </dt>
-                                <dd class="col-sm-9">
-                                    <dl class="row mb-0">
-                                        <dt class="col-sm-4 pb-0">Price : {{ number_format(200,2) }}</dt>
-                                        <dd class="col-sm-8 pb-0">InStock : {{ number_format(50,2) }}</dd>
-                                    </dl>
-                                </dd>
+                            {{ $product->title }}<br>
+                            Created: {{ $product->created_at->diffForHumans() }}
+                        </td>
+                        <td>{!! $product->description !!}</td>
+                        <td>
+                            <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant-{{ $i }}">
+                            @foreach($product->variant_prices as $item)
+                                <div class="col-md-12">
+                                    <div class="row">
+                                        <dt class="col-sm-4 pb-0">
+                                            @php
+                                                $variant = [];
+                                                if($item->variant_one && $item->variant_one->variant)
+                                                    $variant[] = $item->variant_one->variant;
+                                                if($item->variant_two && $item->variant_two->variant)
+                                                    $variant[] = $item->variant_two->variant;
+                                                if($item->variant_three && $item->variant_three->variant)
+                                                    $variant[] = $item->variant_three->variant;
+                                            @endphp
+                                            {{ implode(' / ', $variant) }}
+                                        </dt>
+                                        <dd class="col-sm-8">
+                                            <dl class="row mb-0">
+                                                <dt class="col-sm-4 pb-0">Price : {{ number_format($item->price, 2) }}</dt>
+                                                <dd class="col-sm-8 pb-0">InStock : {{ number_format($item->stock, 2) }}</dd>
+                                            </dl>
+                                        </dd>
+                                    </div>
+                                </div>
+                            @endforeach
                             </dl>
-                            <button onclick="$('#variant').toggleClass('h-auto')" class="btn btn-sm btn-link">Show more</button>
+                            <button onclick="$('#variant-{{ $i }}').toggleClass('h-auto')" class="btn btn-sm btn-link">Show more</button>
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
@@ -77,9 +101,15 @@
                             </div>
                         </td>
                     </tr>
-
+                    @endforeach
                     </tbody>
-
+                    @else
+                    <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-center">Sorry! No product found...</td>
+                    </tr>
+                    </tfoot>
+                    @endif
                 </table>
             </div>
 
@@ -88,10 +118,10 @@
         <div class="card-footer">
             <div class="row justify-content-between">
                 <div class="col-md-6">
-                    <p>Showing 1 to 10 out of 100</p>
+                    <p>Showing {{($products->currentpage()-1)*$products->perPage()+1}} to {{$products->currentpage()*$products->perpage()}} out of {{ $products->total() }}</p>
                 </div>
                 <div class="col-md-2">
-
+                    {{ $products->withQueryString()->links() }}
                 </div>
             </div>
         </div>
