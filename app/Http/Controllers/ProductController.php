@@ -170,11 +170,31 @@ class ProductController extends Controller
      * Display the specified resource.
      *
      * @param \App\Models\Product $product
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show($product)
     {
-
+        $product = Product::select('id', 'title', 'sku', 'description')->findOrFail($product);
+        $items = ProductVariant::select('variant_id','variant')
+            ->where('product_id', '=', $product->id)
+            ->get()
+            ->groupBy('variant_id')
+            ->toArray();
+        $variants = [];
+        foreach ($items as $key => $item) {
+            $a = [
+                'option' => $key,
+                'tags' => [],
+            ];
+            foreach ($item as $tag) {
+                $a['tags'][] = $tag['variant'];
+            }
+            $variants[] = $a;
+        }
+        return response()->json([
+            'product' => $product,
+            'variants' => $variants
+        ]);
     }
 
     /**
@@ -186,7 +206,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $variants = Variant::all();
-        return view('products.edit', compact('variants'));
+        return view('products.edit', compact('variants', 'product'));
     }
 
     /**
@@ -194,11 +214,16 @@ class ProductController extends Controller
      *
      * @param \Illuminate\Http\Request $request
      * @param \App\Models\Product $product
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, Product $product)
     {
-        //
+        DB::transaction(function () use ($request, &$product) {
+            $product->update($request->all());
+        });
+        return response()->json([
+            'message' => $product->title.' has been created',
+        ]);
     }
 
     /**

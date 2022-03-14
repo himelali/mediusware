@@ -110,10 +110,17 @@ export default {
         variants: {
             type: Array,
             required: true
+        },
+        pid: {
+            type: Number,
+            required: false
         }
     },
     created() {
         console.log(this.variants);
+        if(this.pid>0) {
+            this.getProductById(this.pid);
+        }
     },
     data() {
         return {
@@ -137,6 +144,23 @@ export default {
         }
     },
     methods: {
+        getProductById(id) {
+            let _this = this;
+            axios.get('/product/'+id).then(response => {
+                console.log(response.data);
+                if(response.data.product) {
+                    _this.product_name = response.data.product.name;
+                    _this.product_sku = response.data.product.sku;
+                    _this.description = response.data.product.description;
+                }
+                if(response.data.variants) {
+                    _this.product_variant = response.data.variants;
+                    _this.checkVariant();
+                }
+            }).catch(error => {
+                console.log(error);
+            })
+        },
         uploadSuccess: function(file, response) {
             console.log(file, response);
             this.images.push(response.files.file);
@@ -195,12 +219,19 @@ export default {
                 product_variant: this.product_variant,
                 product_variant_prices: this.product_variant_prices
             }
-            axios.post('/product', product).then(response => {
-                console.log(response.data);
-            }).catch(error => {
-                console.log(error);
-            })
-
+            if(this.pid>0) {
+                axios.put('/product/'+this.pid, product).then(response => {
+                    console.log(response.data);
+                }).catch(error => {
+                    console.log(error);
+                })
+            } else {
+                axios.post('/product', product).then(response => {
+                    console.log(response.data);
+                }).catch(error => {
+                    console.log(error);
+                })
+            }
             console.log(product);
         }
 
