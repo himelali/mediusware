@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use App\Models\ProductVariantPrice;
 use App\Models\Variant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -90,7 +94,75 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        $product = null;
+        DB::transaction(function () use ($request, &$product) {
+            $product = Product::create($request->all());
+            $now = now()->toDateTimeString();
+            $variants = [];
+            foreach ($request->post('product_variant') as $variant) {
+                foreach ($variant['tags'] as $item) {
+                    $variants[] = [
+                        'variant' => $item,
+                        'variant_id' => $variant['option'],
+                        'product_id' => $product->id,
+                        'created_at' => $now,
+                        'updated_at' => $now
+                    ];
+                }
+            }
+            if(!empty($variants)) {
+                ProductVariant::insert($variants);
+                $variants = ProductVariant::where('product_id', '=', $product->id)
+                    ->pluck('id', 'variant')
+                    ->toArray();
+                $prices = [];
+                foreach ($request->post('product_variant_prices') as $item) {
+                    $items = explode('/', rtrim($item['title'], '/'));
+                    $row = [
+                        'product_id' => $product->id,
+                        'price' => $item['price'],
+                        'stock' => $item['stock'],
+                        'created_at' => $now,
+                        'updated_at' => $now
+                    ];
 
+                    $row['product_variant_one'] = isset($items[0]) ? ($variants[$items[0]] ?? null) : null;
+                    $row['product_variant_two'] = isset($items[1]) ? ($variants[$items[1]] ?? null) : null;
+                    $row['product_variant_three'] = isset($items[2]) ? ($variants[$items[2]] ?? null) : null;
+                    $prices[] = $row;
+                }
+                if(!empty($prices)) {
+                    ProductVariantPrice::insert($prices);
+                }
+            }
+            if(!empty($request->post('product_image'))) {
+                $files = [];
+                foreach ($request->post('product_image') as $image) {
+                    $image = str_replace('data:image/jpeg;base64,', '', $image);
+                    $image = str_replace('data:image/jpg;base64,', '', $image);
+                    $image = str_replace(' ', '+', $image);
+                    $imageName = Str::random(15).'.'.'jpg';
+                    try {
+                        File::put(storage_path(). '/app/public/' . $imageName, base64_decode($image));
+                        $files[] = [
+                            'product_id' => $product->id,
+                            'file_path' => $imageName,
+                        ];
+                    } catch (\Exception $e) {}
+                }
+                if(!empty($files)) {
+                    ProductImage::insert($files);
+                }
+            }
+        });
+        if($product) {
+            return response()->json([
+                'message' => $product->title.' has been created',
+            ]);
+        }
+        return response()->json([
+            'error' => 'Something went wrong!',
+        ]);
     }
 
 

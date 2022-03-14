@@ -24,7 +24,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Media</h6>
                     </div>
                     <div class="card-body border">
-                        <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions"></vue-dropzone>
+                        <vue-dropzone @vdropzone-success="uploadSuccess" ref="myVueDropzone" id="dropzone" :options="dropzoneOptions"></vue-dropzone>
                     </div>
                 </div>
             </div>
@@ -112,6 +112,9 @@ export default {
             required: true
         }
     },
+    created() {
+        console.log(this.variants);
+    },
     data() {
         return {
             product_name: '',
@@ -134,6 +137,11 @@ export default {
         }
     },
     methods: {
+        uploadSuccess: function(file, response) {
+            console.log(file, response);
+            this.images.push(response.files.file);
+            console.log(this.images);
+        },
         // it will push a new object into product variant
         newVariant() {
             let all_variants = this.variants.map(el => el.id)
@@ -187,8 +195,6 @@ export default {
                 product_variant: this.product_variant,
                 product_variant_prices: this.product_variant_prices
             }
-
-
             axios.post('/product', product).then(response => {
                 console.log(response.data);
             }).catch(error => {
